@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.DS_Store
+xg_cache.json
+*.bak
