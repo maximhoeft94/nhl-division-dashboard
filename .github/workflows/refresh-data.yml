@@ -1,0 +1,57 @@
+name: Refresh NHL data
+
+on:
+  schedule:
+    - cron: "17 12 * * *"   # daily at 12:17 UTC (6:17 AM Mountain in summer, 5:17 AM in winter)
+  workflow_dispatch:         # "Run workflow" button on the Actions tab
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Shot data for expected goals, so each run only downloads new games
+      - uses: actions/cache@v4
+        with:
+          path: xg_cache.json
+          key: xg-${{ github.run_id }}
+          restore-keys: xg-
+
+      - name: Pull the current season
+        run: python fetch_nhl.py --xg
+
+      - name: Commit if the data changed
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No changes."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "Refresh NHL data ($(date -u +%Y-%m-%d))"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Pushes made by this workflow may not start a Pages build on their own, so ask for one
+      - name: Rebuild GitHub Pages
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" || echo "Pages build request failed; the site will update on the next build."

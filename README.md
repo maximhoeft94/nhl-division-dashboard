@@ -34,7 +34,7 @@ NHL public API --(fetch_nhl.py)--> JSON embedded in index.html --> vanilla JS + 
 
 - HTML, CSS, and vanilla JavaScript, with no frameworks or chart libraries
 - Python 3.9+ standard library only, for the data pull
-- GitHub Pages for hosting
+- GitHub Actions for the daily data refresh, and GitHub Pages for hosting
 
 ## Run it
 
@@ -42,16 +42,16 @@ View it: open `index.html` in a browser, or visit the live link.
 
 Refresh the data:
 
+The repo refreshes itself. A GitHub Actions workflow (`.github/workflows/refresh-data.yml`) runs `fetch_nhl.py --xg` every morning, commits the new `index.html` if anything changed, and rebuilds the site. To refresh right away, open the **Actions** tab, pick **Refresh NHL data**, and click **Run workflow**.
+
+To run it yourself:
+
 ```
 python fetch_nhl.py
 python fetch_nhl.py --xg    # also builds expected goals (first run is slower; shots are cached)
 ```
 
 The script covers the current regular season only. It skips preseason and playoff games, and stops without writing anything if the API still reports a previous season. To update a different file, use `python fetch_nhl.py --html docs/index.html`.
-
-## Current snapshot
-
-The committed version was built on Oct 1, 2026, with standings and the first 8 games. Player stats cover the Sept 29 games. Team shot, power-play, and faceoff stats load when you run `fetch_nhl.py`; until then those panels show a "not loaded yet" message.
 
 ## Data
 
