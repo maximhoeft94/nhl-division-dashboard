@@ -150,7 +150,7 @@ table.ins td,table.ins th{padding:8px 12px}
 .dvd td small{display:block;color:var(--muted);font-size:12px}
 .ihead{padding:10px 14px 0}
 .chd{font-size:12px;font-weight:600;color:var(--muted);padding:0 0 2px}
-.chd span:last-child{grid-column:2/4;text-align:right}
+.cr4{grid-template-columns:62px minmax(0,1fr) 40px 40px}
 .fdl{display:flex;justify-content:space-between;width:106px;font-size:11px;font-weight:500;margin-top:2px}
 table.ins td .fd{margin-right:9px}table.ins td .fd:last-child{margin-right:0}
 .sc .ax{stroke:var(--line);stroke-width:1.25}
@@ -252,6 +252,7 @@ const T = D.teams, AB = Object.keys(T);
 AB.forEach(a => {
   const t = T[a]; t.ab = a;
   t.gfpg = t.gp ? t.gf/t.gp : NaN; t.gapg = t.gp ? t.ga/t.gp : NaN;
+  t.ppr = Math.max(0, 2*((D.seasonGames||84) - t.gp));
 });
 const SK = D.skaters.map(p => Object.assign({}, p, {
   pgp: p.gp ? p.p/p.gp : 0, gpg: p.gp ? p.g/p.gp : 0, apg: p.gp ? p.a/p.gp : 0,
@@ -352,7 +353,7 @@ function nextCell(a){
 function renderStandings(){
   const all = state.div==='All';
   const cols = [
-    ['team','Team'],['gp','GP'],['w','W'],['l','L'],['otl','OTL'],['pts','PTS'],['ptsPct','P%'],['rw','RW'],
+    ['team','Team'],['gp','GP'],['w','W'],['l','L'],['otl','OTL'],['pts','PTS'],['ppr','PPR'],['ptsPct','P%'],['rw','RW'],
     ['gf','GF'],['ga','GA'],['diff','DIFF'],['l10','L10'],['strk','STRK'],['prev','Last game'],['next','Next game']
   ];
   const nonSort = {prev:1,next:1};
@@ -377,7 +378,7 @@ function renderStandings(){
     if(all) h += '<td class="l note">'+DIVABB[t.division]+'</td>';
     h += '<td class="l"><span class="team">'+dot(a)+esc(a)+' <span class="full">'+esc(t.name)+'</span></span></td>'
       + '<td class="num'+hl('gp')+'">'+t.gp+'</td><td class="num'+hl('w')+'">'+t.w+'</td><td class="num'+hl('l')+'">'+t.l+'</td><td class="num'+hl('otl')+'">'+t.otl+'</td>'
-      + '<td class="num'+hl('pts')+'"><b>'+t.pts+'</b></td><td class="num'+hl('ptsPct')+'">'+sv3(t.ptsPct)+'</td><td class="num'+hl('rw')+'">'+t.rw+'</td>'
+      + '<td class="num'+hl('pts')+'"><b>'+t.pts+'</b></td><td class="num'+hl('ppr')+'">'+t.ppr+'</td><td class="num'+hl('ptsPct')+'">'+sv3(t.ptsPct)+'</td><td class="num'+hl('rw')+'">'+t.rw+'</td>'
       + '<td class="num'+hl('gf')+'">'+t.gf+'</td><td class="num'+hl('ga')+'">'+t.ga+'</td><td class="num'+hl('diff')+'">'+sgn(t.diff)+'</td>'
       + '<td class="num'+hl('l10')+'">'+esc(t.l10||'–')+'</td><td class="num'+hl('strk')+' '+(String(t.streak||'')[0]==='W'?'W':(String(t.streak||'')[0]==='L'?'L':''))+'">'+esc(t.streak||'–')+'</td>'
       + '<td class="l">'+prevCell(a)+'</td><td class="l">'+nextCell(a)+'</td></tr>';
@@ -392,7 +393,8 @@ function cCard(title, note, body, extra, wide){
   const st = (extra?'--c:'+DIVCOL[title]+';':'')+(wide?'grid-column:1/-1;':'');
   return '<div class="panel card'+(extra||'')+(wide?' wide':'')+'"'+(st?' style="'+st+'"':'')+'><h3>'+title+'</h3>'+(note?'<div class="note" style="margin:-4px 0 6px">'+note+'</div>':'')+body+'</div>';
 }
-const PTS_HEAD = '<div class="cr chd"><span></span><span>Total points</span></div>';
+const PTS_HEAD = '<div class="cr cr4 chd"><span></span><span></span><span class="v">PTS</span><span class="v">PPR</span></div>';
+const rowPts = (a, mid) => '<div class="cr cr4"><span class="tm">'+dot(a)+esc(a)+'</span>'+mid+'<span class="v num">'+T[a].pts+'</span><span class="v num">'+T[a].ppr+'</span></div>';
 function rowOf(a, mid, val){ return '<div class="cr"><span class="tm">'+dot(a)+esc(a)+'</span>'+mid+'<span class="v num">'+val+'</span></div>'; }
 function renderDivCharts(){
   const all = state.div==='All';
@@ -404,7 +406,7 @@ function renderDivCharts(){
     h += '<div class="grid g2">';
     DIVS.forEach(d => {
       const ts = AB.filter(a=>T[a].division===d).sort(cmpStand);
-      h += cCard(d, '', PTS_HEAD + ts.map(a => rowOf(a, '<span class="trk"><i style="width:'+(T[a].pts/maxP*100).toFixed(1)+'%;background:'+esc(T[a].color)+'"></i></span>', T[a].pts)).join(''), ' div');
+      h += cCard(d, '', PTS_HEAD + ts.map(a => rowPts(a, '<span class="trk"><i style="width:'+(T[a].pts/maxP*100).toFixed(1)+'%;background:'+esc(T[a].color)+'"></i></span>')).join(''), ' div');
     });
     h += '</div>';
     $('#divCharts').innerHTML = h; return;
@@ -415,7 +417,7 @@ function renderDivCharts(){
   const maxG = Math.max(1, Math.max.apply(null, ts.map(a=>Math.max(T[a].gf,T[a].ga))));
   const maxD = Math.max(1, Math.max.apply(null, ts.map(a=>Math.abs(T[a].diff))));
   h += '<div class="grid g2">';
-  h += cCard('Points', '', PTS_HEAD + ts.map(a => rowOf(a, '<span class="trk"><i style="width:'+(T[a].pts/maxP*100).toFixed(1)+'%;background:'+esc(T[a].color)+'"></i></span>', T[a].pts)).join(''));
+  h += cCard('Points', '', PTS_HEAD + ts.map(a => rowPts(a, '<span class="trk"><i style="width:'+(T[a].pts/maxP*100).toFixed(1)+'%;background:'+esc(T[a].color)+'"></i></span>')).join(''));
   h += cCard('Record', '', '<div class="lgd"><span><b style="background:'+W_+'"></b>Wins</span><span><b style="background:'+O_+'"></b>OT losses</span><span><b style="background:'+L_+'"></b>Losses</span></div>'
     + ts.map(a => { const t=T[a], seg=(n,c)=> n ? '<span class="seg" style="width:'+(n/maxGP*100).toFixed(1)+'%;background:'+c+'">'+n+'</span>' : '';
       return rowOf(a, '<span class="trk">'+seg(t.w,W_)+seg(t.otl,O_)+seg(t.l,L_)+'</span>', t.w+'-'+t.l+'-'+t.otl); }).join(''));
@@ -505,10 +507,10 @@ function tabRace(ts){
   const PP = playoffPicture(), pic = PP.pic;
   const bad = c => '<span class="bd '+(c.isIn?(c.wc?'wc':'in'):'out')+'">'+esc(c.label)+'</span>';
   const body = a => { const c=pic[a], t=T[a], pace = t.gp ? t.pts/t.gp*SEASON_GAMES : null;
-    return '<tr data-a="'+a+'"><td class="l">'+tm(a)+'</td><td class="l" data-k="status">'+bad(c)+'</td><td class="num" data-k="pts">'+t.pts+'</td><td class="num" data-k="gp">'+t.gp+'</td>'
+    return '<tr data-a="'+a+'"><td class="l">'+tm(a)+'</td><td class="l" data-k="status">'+bad(c)+'</td><td class="num" data-k="pts">'+t.pts+'</td><td class="num" data-k="ppr">'+t.ppr+'</td><td class="num" data-k="gp">'+t.gp+'</td>'
       + '<td class="l" data-k="pace" data-v="'+(pace==null?'':pace.toFixed(1))+'"><span style="display:inline-flex;align-items:center;gap:8px;min-width:190px"><span class="trk" style="width:120px"><i style="width:'+(pace==null?0:Math.min(100,pace/(2*SEASON_GAMES)*100)).toFixed(1)+'%;background:'+esc(t.color)+'"></i></span><b class="num">'+(pace==null?'–':pace.toFixed(1))+'</b></span></td>'
       + '<td class="num" data-k="gap">'+(c.gap>0?'+':'')+c.gap+'</td></tr>'; };
-  const head = '<thead><tr><th class="l">Team</th><th class="l">Playoff spot</th><th>PTS</th><th>GP</th><th class="l">Points pace over '+SEASON_GAMES+' games</th><th>Points vs. the line</th></tr></thead>';
+  const head = '<thead><tr><th class="l">Team</th><th class="l">Playoff spot</th><th>PTS</th><th>PPR</th><th>GP</th><th class="l">Points pace over '+SEASON_GAMES+' games</th><th>Points vs. the line</th></tr></thead>';
   let h = '<div class="panel scroll"><table class="ins">'+head+'<tbody>'+ts.map(body).join('')+'</tbody></table></div>';
   const confs = state.div==='All' ? ['Eastern','Western'] : [T[ts[0]].conference];
   h += '<div class="grid g2" style="margin-top:14px">'+confs.map(cn => {
