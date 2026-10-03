@@ -190,6 +190,11 @@ select{font:inherit;font-size:14px;background:var(--panel);color:var(--ink);bord
 .radar .rpt:hover .dotp{stroke:var(--ink);stroke-width:2.5}
 .tip{position:fixed;left:0;top:0;z-index:50;pointer-events:none;opacity:0;transition:opacity .1s;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-left:5px solid var(--a);border-radius:6px;padding:7px 11px;font-size:13px;line-height:1.35;box-shadow:0 4px 14px rgba(13,27,46,.16);white-space:nowrap}
 .tip.on{opacity:1}
+.tip.wrap{white-space:normal;max-width:280px}
+.sc .rpt{cursor:pointer}
+.sc .rpt .hit{fill:transparent}
+.sc .rpt .dotp{stroke:var(--panel);stroke-width:2;transition:stroke-width .1s}
+.sc .rpt:hover .dotp{stroke:var(--ink);stroke-width:2.5}
 .tip span{display:block;color:var(--muted)}
 .tip span b{color:var(--ink)}
 .cmp td{padding:6px 8px}
@@ -470,7 +475,9 @@ function scatter(P, o){
   s += '<text x="'+((ml+W-mr)/2)+'" y="'+(H-8)+'" text-anchor="middle">'+esc(o.xl)+'</text><text transform="translate(14 '+((mt+H-mb)/2)+') rotate(-90)" text-anchor="middle">'+esc(o.yl)+'</text>';
   { const bw = 112, bx = o.best==='tr' ? W-mr-8-bw : ml+10;
     s += '<rect class="bestc" x="'+bx+'" y="'+(mt+2)+'" width="'+bw+'" height="26" rx="13"/><text class="best" x="'+(bx+bw/2)+'" y="'+(mt+19)+'" text-anchor="middle">Strongest here</text>'; }
-  P.forEach(p => { s += '<g data-a="'+p.a+'" data-x="'+p.x+'" data-y="'+p.y+'"><circle cx="'+X(p.x).toFixed(1)+'" cy="'+Y(p.y).toFixed(1)+'" r="7.5" style="fill:'+esc(T[p.a].color)+';stroke:var(--panel);stroke-width:2"><title>'+esc(T[p.a].name)+'</title></circle><text class="lab" x="'+(X(p.x)+11).toFixed(1)+'" y="'+(Y(p.y)+4).toFixed(1)+'">'+p.a+'</text></g>'; });
+  const xv = o.xv || (v=>v.toFixed(2)), yv = o.yv || (v=>v.toFixed(2));
+  P.forEach(p => { const L = [[o.xl, xv(p.x)], [o.yl, yv(p.y)]]; if(o.yFirst) L.reverse();
+    s += '<g class="rpt" data-a="'+p.a+'" data-x="'+p.x+'" data-y="'+p.y+'" data-n="'+esc(T[p.a].name)+'" data-c="'+esc(T[p.a].color)+'" data-l="'+esc(L.map(r=>r.join('::')).join('||'))+'"><circle class="hit" cx="'+X(p.x).toFixed(1)+'" cy="'+Y(p.y).toFixed(1)+'" r="13"/><circle class="dotp" cx="'+X(p.x).toFixed(1)+'" cy="'+Y(p.y).toFixed(1)+'" r="7.5" style="fill:'+esc(T[p.a].color)+'"></circle><text class="lab" x="'+(X(p.x)+11).toFixed(1)+'" y="'+(Y(p.y)+4).toFixed(1)+'">'+p.a+'</text></g>'; });
   return s+'</svg>';
 }
 
@@ -510,7 +517,7 @@ function tabGfga(ts){
   const P = ts.filter(a=>T[a].gp>0).map(a => ({a:a, x:T[a].gapg, y:T[a].gfpg}));
   if(!P.length) return emptyBox('This chart fills in once games have been played.');
   const pl = AB.filter(a=>T[a].gp>0), gpT = pl.reduce((s,a)=>s+T[a].gp,0), gx = pl.reduce((s,a)=>s+T[a].ga,0)/gpT, gy = pl.reduce((s,a)=>s+T[a].gf,0)/gpT;
-  return '<div class="panel" style="padding:10px 12px">'+scatter(P,{title:'Goals for versus goals against per game',xl:'Goals against per game',yl:'Goals for per game',xf:v=>v.toFixed(1),yf:v=>v.toFixed(1),avg:{x:gx,y:gy},best:'tl'})+'</div>'
+  return '<div class="panel" style="padding:10px 12px">'+scatter(P,{title:'Goals for versus goals against per game',xl:'Goals against per game',yl:'Goals for per game',xf:v=>v.toFixed(1),yf:v=>v.toFixed(1),xv:v=>v.toFixed(2),yv:v=>v.toFixed(2),yFirst:1,avg:{x:gx,y:gy},best:'tl'})+'</div>'
     +'<div class="note" style="margin-top:6px">Dashed lines mark the league average per game. Top left means scoring a lot and allowing little.</div>';
 }
 const paceOf = a => T[a].gp ? T[a].pts/T[a].gp*SEASON_GAMES : -1;
@@ -596,7 +603,7 @@ function tabDvd(){
 function tabSt(ts){
   const P = ts.filter(a=>T[a].gp>0 && T[a].ppPct!=null && T[a].pkPct!=null).map(a=>({a:a,x:T[a].ppPct,y:T[a].pkPct}));
   if(!P.length) return needFeed('Power play and penalty kill data');
-  return '<div class="panel" style="padding:10px 12px">'+scatter(P,{title:'Power play versus penalty kill',xl:'Power play %',yl:'Penalty kill %',xf:v=>v.toFixed(0),yf:v=>v.toFixed(0),avg:{x:leagueAvg(a=>T[a].ppPct),y:leagueAvg(a=>T[a].pkPct)},best:'tr'})+'</div>'
+  return '<div class="panel" style="padding:10px 12px">'+scatter(P,{title:'Power play versus penalty kill',xl:'Power play %',yl:'Penalty kill %',xf:v=>v.toFixed(0),yf:v=>v.toFixed(0),xv:v=>v.toFixed(1)+'%',yv:v=>v.toFixed(1)+'%',avg:{x:leagueAvg(a=>T[a].ppPct),y:leagueAvg(a=>T[a].pkPct)},best:'tr'})+'</div>'
     +'<div class="note" style="margin-top:6px">Dashed lines mark the league average. Top right means a strong power play and a strong penalty kill.</div>';
 }
 function shotStats(a){
@@ -860,21 +867,96 @@ function renderH2HPlayers(){
   $('#h2hPlayers').innerHTML = h;
 }
 
-/* ---------- radar hover tooltip ---------- */
+/* ---------- hover tooltips: chart points and column headers ---------- */
+const DESC = {
+  common: {
+    'Team':'Team', 'Div':'Division', 'GP':'Games played', 'W':'Wins', 'L':'Regulation losses',
+    'OTL':'Overtime and shootout losses (worth 1 point)', 'PTS':'Standings points: 2 per win, 1 per overtime or shootout loss',
+    'PPR':'Possible points remaining: 2 for every game left in the 84-game season', 'P%':'Points percentage: points earned divided by points possible so far',
+    'RW':'Regulation wins', 'GF':'Goals for', 'GA':'Goals against', 'DIFF':'Goal differential: goals for minus goals against',
+    'L10':'Record in the last 10 games (W-L-OTL)', 'STRK':'Current streak (W = wins, L = losses, OT = overtime losses)',
+    'Last game':'Result of the most recent game', 'Next game':'Next scheduled game', '#':'Rank'
+  },
+  form: {
+    'Last 5':'Last five games, oldest to most recent. Green is a win, gray an overtime loss, red a loss.',
+    'Home':'Record in home games (W-L-OTL)', 'Road':'Record in road games (W-L-OTL)',
+    'One-goal games':'Record in games decided by one goal (W-L-OTL)', 'Overtime games':'Record in games that went to overtime or a shootout (W-L-OTL)',
+    'Division games':'Record against division rivals (W-L-OTL)'
+  },
+  race: {
+    'Playoff spot':'Where the team would land if the season ended today: top 3 in each division, then 2 wild cards per conference',
+    'Points pace':'Points per game times 84: where the team would finish at its current rate'
+  },
+  scorers: {
+    'Points leader':"The team's top scorer by points", 'P':'Points (goals plus assists)', 'Goals leader':"The team's top goal scorer",
+    'G':'Goals', 'Share of team goals':"Top goal scorer's share of all goals by the team's skaters"
+  },
+  dvd: {
+    'Division':'Division', 'All other divisions':'Record against every other division (W-L-OTL), with goal differential and points %'
+  },
+  shots: {
+    'Shots for / GP':'Shots on goal per game', 'Shots against / GP':'Shots on goal allowed per game',
+    'Shot share':"Share of all shots in the team's games taken by the team. Above 50% means it controls play more often.",
+    'Shooting %':'Goals divided by shots on goal', 'Save %':'Saves divided by shots faced',
+    'PDO':'Shooting % plus save %, times 1,000. Around 1,000 is normal; far above or below usually evens out.'
+  },
+  sched: {
+    'Games':'Games left on the schedule', 'Home':'Home games left', 'Road':'Road games left',
+    'Back-to-backs':"Games played the day after the team's previous game",
+    "Opponents' points %":'Average points % of upcoming opponents (only opponents who have played)'
+  },
+  xg: {
+    'xGF':"Expected goals for: what an average shooter would score from the team's shots",
+    'xGA':"Expected goals against: what an average shooter would score from opponents' shots",
+    'xG share':"Team's share of the expected goals in its games",
+    'Goals vs. xG':'Goals scored minus expected goals. Positive means finishing better than expected.',
+    'Goals against vs. xG':'Goals allowed minus expected goals against. Negative means goaltending better than expected.'
+  },
+  skaters: {
+    'Player':'Player', 'Pos':'Position (C center, L left wing, R right wing, D defense)', 'G':'Goals', 'A':'Assists', 'P':'Points (goals plus assists)',
+    '+/-':'Plus/minus: even-strength goals for minus goals against while on the ice', 'PIM':'Penalty minutes', 'PPG':'Power-play goals',
+    'SOG':'Shots on goal', 'S%':'Shooting percentage: goals divided by shots on goal', 'TOI':'Average ice time per game (min:sec)',
+    'HIT':'Hits', 'FO%':'Faceoff win percentage', 'P/GP':'Points per game'
+  },
+  goalies: {
+    'Goalie':'Goalie', 'W':'Wins', 'L':'Regulation losses', 'OTL':'Overtime and shootout losses', 'SA':'Shots against', 'SV':'Saves',
+    'GA':'Goals against', 'SV%':'Save percentage: saves divided by shots against', 'GAA':'Goals-against average per 60 minutes',
+    'SO':'Shutouts', 'TOI':'Time on ice'
+  }
+};
+function colDesc(el, key){
+  const sec = el.closest('section'), id = sec ? sec.id : '';
+  const ctx = id==='insights' ? state.ins : id==='playerLeaders' ? 'skaters' : id==='goalieLeaders' ? 'goalies' : 'standings';
+  const m = DESC[ctx] || {};
+  if(m[key]) return m[key];
+  if(ctx==='race' && /^Points pace/.test(key)) return m['Points pace'];
+  if(ctx==='dvd' && /^vs /.test(key)) return 'Record against the '+key.slice(3)+' division (W-L-OTL), with goal differential';
+  return DESC.common[key] || '';
+}
 const tip = document.createElement('div'); tip.className = 'tip'; tip.setAttribute('role','tooltip'); document.body.appendChild(tip);
 function moveTip(x,y){ const r = tip.getBoundingClientRect(); let L = x+14, Tp = y-r.height-12;
   if(L+r.width > innerWidth-8) L = x-r.width-14; if(Tp < 8) Tp = y+18; tip.style.left = L+'px'; tip.style.top = Tp+'px'; }
 let tipFor = null;
+const TIPSEL = '.rpt, th, .chd .v';
+function tipContent(g){
+  if(g.classList.contains('rpt')){
+    const lines = g.dataset.l ? g.dataset.l.split('||').map(x => x.split('::')) : [[g.dataset.m, g.dataset.v]];
+    return {html:'<b>'+esc(g.dataset.n)+'</b>'+lines.map(l => '<span>'+esc(l[0])+': <b>'+esc(l[1])+'</b></span>').join(''), c:g.dataset.c, wrap:false};
+  }
+  const key = ((g.childNodes[0] && g.childNodes[0].textContent) || '').trim(), d = colDesc(g, key);
+  if(!d || d===key) return null;
+  return {html:'<b>'+esc(key)+'</b><span>'+esc(d)+'</span>', c:'var(--div)', wrap:true};
+}
+function hideTip(){ tip.classList.remove('on'); tipFor = null; }
 function showTip(g, e){
-  if(tipFor !== g){ tipFor = g;
-    tip.innerHTML = '<b>'+esc(g.dataset.n)+'</b><span>'+esc(g.dataset.m)+': <b>'+esc(g.dataset.v)+'</b></span>';
-    tip.style.borderLeftColor = g.dataset.c; }
+  if(tipFor !== g){ const t = tipContent(g); if(!t){ hideTip(); return; }
+    tipFor = g; tip.innerHTML = t.html; tip.style.borderLeftColor = t.c; tip.classList.toggle('wrap', t.wrap); }
   tip.classList.add('on'); moveTip(e.clientX, e.clientY);
 }
-document.addEventListener('pointerover', e => { const g = e.target.closest && e.target.closest('.rpt'); if(g) showTip(g, e); });
-document.addEventListener('pointermove', e => { const g = e.target.closest && e.target.closest('.rpt'); if(g) showTip(g, e); });
-document.addEventListener('pointerout', e => { const g = e.target.closest && e.target.closest('.rpt'); if(g && !(e.relatedTarget && g.contains(e.relatedTarget))) tip.classList.remove('on'); });
-addEventListener('scroll', () => tip.classList.remove('on'), {passive:true});
+document.addEventListener('pointerover', e => { const g = e.target.closest && e.target.closest(TIPSEL); if(g) showTip(g, e); });
+document.addEventListener('pointermove', e => { const g = e.target.closest && e.target.closest(TIPSEL); if(g) showTip(g, e); });
+document.addEventListener('pointerout', e => { const g = e.target.closest && e.target.closest(TIPSEL); if(g && !(e.relatedTarget && g.contains(e.relatedTarget))) hideTip(); });
+addEventListener('scroll', hideTip, {passive:true});
 
 /* ---------- wiring ---------- */
 function renderAll(){
