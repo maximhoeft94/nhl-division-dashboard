@@ -396,6 +396,8 @@ function cCard(title, note, body, extra, wide){
 const PTS_HEAD = '<div class="cr cr4 chd"><span></span><span></span><span class="v">PTS</span><span class="v">PPR</span></div>';
 const rowPts = (a, mid) => '<div class="cr cr4"><span class="tm">'+dot(a)+esc(a)+'</span>'+mid+'<span class="v num">'+T[a].pts+'</span><span class="v num">'+T[a].ppr+'</span></div>';
 function rowOf(a, mid, val){ return '<div class="cr"><span class="tm">'+dot(a)+esc(a)+'</span>'+mid+'<span class="v num">'+val+'</span></div>'; }
+// Snapshot order: points, then possible points remaining, then the default order
+const cmpSnap = (a,b) => T[b].pts - T[a].pts || T[b].ppr - T[a].ppr || cmpStand(a,b);
 function renderDivCharts(){
   const all = state.div==='All';
   let h = '<div class="sh"><h2>'+(all?'Division snapshot':esc(state.div)+' snapshot')+'</h2><span class="note">'
@@ -405,13 +407,13 @@ function renderDivCharts(){
     const maxP = Math.max(2, Math.max.apply(null, AB.map(a=>T[a].pts)));
     h += '<div class="grid g2">';
     DIVS.forEach(d => {
-      const ts = AB.filter(a=>T[a].division===d).sort(cmpStand);
+      const ts = AB.filter(a=>T[a].division===d).sort(cmpSnap);
       h += cCard(d, '', PTS_HEAD + ts.map(a => rowPts(a, '<span class="trk"><i style="width:'+(T[a].pts/maxP*100).toFixed(1)+'%;background:'+esc(T[a].color)+'"></i></span>')).join(''), ' div');
     });
     h += '</div>';
     $('#divCharts').innerHTML = h; return;
   }
-  const ts = view().sort(cmpStand);
+  const ts = view().sort(cmpSnap);
   const maxP = Math.max(2, Math.max.apply(null, ts.map(a=>T[a].pts)));
   const maxGP = Math.max(1, Math.max.apply(null, ts.map(a=>T[a].gp)));
   const maxG = Math.max(1, Math.max.apply(null, ts.map(a=>Math.max(T[a].gf,T[a].ga))));
