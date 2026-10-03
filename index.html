@@ -868,7 +868,8 @@ document.addEventListener('change', e => {
   else { renderH2HPlayers(); }
 });
 
-$('#asof').textContent = D.seasonLabel + ' season, as of ' + fD(D.asOf);
+const fTS = s => new Date(s).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
+$('#asof').textContent = D.seasonLabel + ' season \u00b7 Updated as of: ' + (D.updatedAt ? fTS(D.updatedAt) : fD(D.asOf));
 const SHELL = !D.sample && !games.length && !AB.some(a=>T[a].gp>0);
 if(D.note) $('#banner').innerHTML = '<div class="banner">'+esc(D.note)+'</div>';
 else if(D.sample) $('#banner').innerHTML = '<div class="banner"><b>Sample data.</b> Results, standings, and players here are simulated so you can try every feature.</div>';

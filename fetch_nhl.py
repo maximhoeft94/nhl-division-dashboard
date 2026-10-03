@@ -303,7 +303,8 @@ def build_data(fetch=get_json, log=print, today=None, xg=False, xg_cache=None):
     s = str(season)
     stamp = today.isoformat()
     xgd = build_xg(games, fetch, log, xg_cache) if xg else None
-    out = {"sample": False, "seasonLabel": "%s-%s" % (s[:4], s[6:]), "asOf": stamp, "generated": stamp,
+    updated = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    out = {"sample": False, "seasonLabel": "%s-%s" % (s[:4], s[6:]), "asOf": stamp, "generated": stamp, "updatedAt": updated,
             "seasonGames": 84, "teams": teams, "skaters": skaters, "goalies": goalies, "games": games}
     if xgd:
         out["xg"] = xgd
