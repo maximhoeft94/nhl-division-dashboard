@@ -184,6 +184,14 @@ select{font:inherit;font-size:14px;background:var(--panel);color:var(--ink);bord
 .radar .ring{fill:none;stroke:var(--line);stroke-width:1}
 .radar .spoke{stroke:var(--line);stroke-width:1}
 .radar text{font-family:var(--font-b);font-size:13px;fill:var(--ink)}
+.radar .rpt{cursor:pointer}
+.radar .rpt .hit{fill:transparent}
+.radar .rpt .dotp{stroke:var(--panel);stroke-width:2;transition:stroke-width .1s}
+.radar .rpt:hover .dotp{stroke:var(--ink);stroke-width:2.5}
+.tip{position:fixed;left:0;top:0;z-index:50;pointer-events:none;opacity:0;transition:opacity .1s;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-left:5px solid var(--a);border-radius:6px;padding:7px 11px;font-size:13px;line-height:1.35;box-shadow:0 4px 14px rgba(13,27,46,.16);white-space:nowrap}
+.tip.on{opacity:1}
+.tip span{display:block;color:var(--muted)}
+.tip span b{color:var(--ink)}
 .cmp td{padding:6px 8px}
 .cmp td.k{text-align:center;color:var(--muted);font-size:13px}
 .cmp td.win{font-weight:700;color:var(--ink)}
@@ -750,7 +758,7 @@ function renderGoalieLeaders(){
 }
 
 /* ---------- radar ---------- */
-function radar(labels, A, B){
+function radar(labels, A, B, tipA, tipB){
   const W=540, H=452, cx=W/2, cy=H/2+2, R=150, n=labels.length;
   const pt = (i,v) => { const ang=-Math.PI/2+i*2*Math.PI/n; return [cx+Math.cos(ang)*R*v, cy+Math.sin(ang)*R*v]; };
   const poly = (arr) => arr.map((v,i)=>pt(i,v).map(x=>x.toFixed(1)).join(',')).join(' ');
@@ -759,6 +767,9 @@ function radar(labels, A, B){
   for(let i=0;i<n;i++){ const p=pt(i,1); s += '<line class="spoke" x1="'+cx+'" y1="'+cy+'" x2="'+p[0].toFixed(1)+'" y2="'+p[1].toFixed(1)+'"/>'; }
   s += '<polygon points="'+poly(A)+'" style="fill:var(--a);fill-opacity:.22;stroke:var(--a);stroke-width:2.5"/>';
   s += '<polygon points="'+poly(B)+'" style="fill:var(--b);fill-opacity:.22;stroke:var(--b);stroke-width:2.5"/>';
+  const dots = (arr, tips, col) => !tips ? '' : arr.map((v,i) => { const p = pt(i,v), t = tips[i];
+    return '<g class="rpt" data-n="'+esc(t[0])+'" data-m="'+esc(t[1])+'" data-v="'+esc(t[2])+'" data-c="'+col+'"><circle class="hit" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="13"/><circle class="dotp" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="5" style="fill:'+col+'"/></g>'; }).join('');
+  s += dots(A, tipA, 'var(--a)') + dots(B, tipB, 'var(--b)');
   labels.forEach((l,i) => {
     const p = pt(i,1.14), c = Math.cos(-Math.PI/2+i*2*Math.PI/n);
     s += '<text x="'+p[0].toFixed(1)+'" y="'+(p[1]+4).toFixed(1)+'" text-anchor="'+(Math.abs(c)<0.2?'middle':(c>0?'start':'end'))+'">'+esc(l)+'</text>';
@@ -784,6 +795,8 @@ const RM = [
 function teamOpts(sel){
   return DIVS.map(d => '<optgroup label="'+d+'">'+AB.filter(a=>T[a].division===d).sort().map(a => '<option value="'+a+'"'+(a===sel?' selected':'')+'>'+esc(T[a].name)+'</option>').join('')+'</optgroup>').join('');
 }
+const fmtR = (m,v) => m.s3 ? sv3(v) : num(v,m.d);
+const lastName = n => { const p = String(n||'').trim().split(/\s+/); return p.length>1 ? p.slice(1).join(' ') : p[0]; };
 function renderH2HTeams(){
   const v = view().sort(cmpStand);
   if(!state.tA || !T[state.tA]) state.tA = v[0];
@@ -795,7 +808,7 @@ function renderH2HTeams(){
   const nrm = (m,val) => { if(!ok(val)) return 0.06; const r=rng[m.k]; if(r[1]===r[0]) return 0.5; const f=(val-r[0])/(r[1]-r[0]); return 0.06+0.94*(m.hi?f:1-f); };
   let h = '<div class="sh"><h2>Head-to-head: teams</h2></div>'
     + '<div class="h2h"><div class="panel"><div class="sel"><select class="ca" data-sel="tA" aria-label="Team A">'+teamOpts(state.tA)+'</select><select class="cb" data-sel="tB" aria-label="Team B">'+teamOpts(state.tB)+'</select></div>';
-  h += (played.length && AX.length>=3) ? radar(AX.map(m=>m.l), AX.map(m=>nrm(m,A[m.k])), AX.map(m=>nrm(m,B[m.k]))) : '<div class="empty">The radar appears once games have been played.</div>';
+  h += (played.length && AX.length>=3) ? radar(AX.map(m=>m.l), AX.map(m=>nrm(m,A[m.k])), AX.map(m=>nrm(m,B[m.k])), AX.map(m=>[A.name, m.l, fmtR(m,A[m.k])]), AX.map(m=>[B.name, m.l, fmtR(m,B[m.k])])) : '<div class="empty">The radar appears once games have been played.</div>';
   h += '</div><div class="panel"><h3><span style="color:var(--a)">'+esc(A.name)+'</span> vs <span style="color:var(--b)">'+esc(B.name)+'</span></h3>';
   const rows = [
     {l:'Record', a:A.pts, b:B.pts, hi:1, fa:A.w+'-'+A.l+'-'+A.otl, fb:B.w+'-'+B.l+'-'+B.otl},
@@ -837,15 +850,31 @@ function renderH2HPlayers(){
   const base = q.length>2 ? q : pool;
   const rng = {}; metrics.forEach(m => { const xs = base.map(p=>p[m.k]); rng[m.k]=[Math.min.apply(null,xs),Math.max.apply(null,xs)]; });
   const nrm = (m,val) => { const r=rng[m.k]; if(r[1]===r[0]) return 0.5; const f=Math.max(0,Math.min(1,(val-r[0])/(r[1]-r[0]))); return 0.06+0.94*(m.hi?f:1-f); };
-  h += '<div class="panel"><div class="sel"><select class="ca" data-sel="pA" aria-label="Player A">'+opts(state.pA)+'</select><select class="cb" data-sel="pB" aria-label="Player B">'+opts(state.pB)+'</select></div>'
-    + radar(metrics.map(m=>m.l), metrics.map(m=>nrm(m,A[m.k])), metrics.map(m=>nrm(m,B[m.k]))) + '</div>';
   const fm = (m,p) => m.s3 ? sv3(p[m.k]) : (m.sg ? (p[m.k]>0?'+':'')+num(p[m.k],m.d) : num(p[m.k],m.d));
+  h += '<div class="panel"><div class="sel"><select class="ca" data-sel="pA" aria-label="Player A">'+opts(state.pA)+'</select><select class="cb" data-sel="pB" aria-label="Player B">'+opts(state.pB)+'</select></div>'
+    + radar(metrics.map(m=>m.l), metrics.map(m=>nrm(m,A[m.k])), metrics.map(m=>nrm(m,B[m.k])), metrics.map(m=>[lastName(A.name), m.l, fm(m,A)]), metrics.map(m=>[lastName(B.name), m.l, fm(m,B)])) + '</div>';
   const rows = [{l:'Team', a:0, b:0, hi:1, fa:esc(A.team), fb:esc(B.team)}, {l:'Games', a:A.gp, b:B.gp, hi:1, fa:A.gp, fb:B.gp}]
     .concat(g==='G' ? [{l:'Record', a:A.w, b:B.w, hi:1, fa:A.w+'-'+A.l+'-'+A.otl, fb:B.w+'-'+B.l+'-'+B.otl}] : [{l:'G-A-P', a:A.p, b:B.p, hi:1, fa:A.g+'-'+A.a+'-'+A.p, fb:B.g+'-'+B.a+'-'+B.p}])
     .concat(metrics.map(m => ({l:m.l, a:A[m.k], b:B[m.k], hi:m.hi, fa:fm(m,A), fb:fm(m,B)})));
   h += '<div class="panel"><h3><span style="color:var(--a)">'+esc(A.name)+'</span> vs <span style="color:var(--b)">'+esc(B.name)+'</span></h3>'+cmpTable(rows)+'</div></div>';
   $('#h2hPlayers').innerHTML = h;
 }
+
+/* ---------- radar hover tooltip ---------- */
+const tip = document.createElement('div'); tip.className = 'tip'; tip.setAttribute('role','tooltip'); document.body.appendChild(tip);
+function moveTip(x,y){ const r = tip.getBoundingClientRect(); let L = x+14, Tp = y-r.height-12;
+  if(L+r.width > innerWidth-8) L = x-r.width-14; if(Tp < 8) Tp = y+18; tip.style.left = L+'px'; tip.style.top = Tp+'px'; }
+let tipFor = null;
+function showTip(g, e){
+  if(tipFor !== g){ tipFor = g;
+    tip.innerHTML = '<b>'+esc(g.dataset.n)+'</b><span>'+esc(g.dataset.m)+': <b>'+esc(g.dataset.v)+'</b></span>';
+    tip.style.borderLeftColor = g.dataset.c; }
+  tip.classList.add('on'); moveTip(e.clientX, e.clientY);
+}
+document.addEventListener('pointerover', e => { const g = e.target.closest && e.target.closest('.rpt'); if(g) showTip(g, e); });
+document.addEventListener('pointermove', e => { const g = e.target.closest && e.target.closest('.rpt'); if(g) showTip(g, e); });
+document.addEventListener('pointerout', e => { const g = e.target.closest && e.target.closest('.rpt'); if(g && !(e.relatedTarget && g.contains(e.relatedTarget))) tip.classList.remove('on'); });
+addEventListener('scroll', () => tip.classList.remove('on'), {passive:true});
 
 /* ---------- wiring ---------- */
 function renderAll(){
