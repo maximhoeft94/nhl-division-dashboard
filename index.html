@@ -149,6 +149,13 @@ table.ins td,table.ins th{padding:8px 12px}
 .dvd tr.cur td{background:color-mix(in srgb,var(--div) 10%,transparent)}
 .dvd td small{display:block;color:var(--muted);font-size:12px}
 .ihead{padding:10px 14px 0}
+.chd{font-size:12px;font-weight:600;color:var(--muted);padding:0 0 2px}
+.chd span:last-child{grid-column:2/4;text-align:right}
+.fdl{display:flex;justify-content:space-between;width:106px;font-size:11px;font-weight:500;margin-top:2px}
+table.ins td .fd{margin-right:9px}table.ins td .fd:last-child{margin-right:0}
+.sc .ax{stroke:var(--line);stroke-width:1.25}
+.sc .bestc{fill:none;stroke:var(--div);stroke-width:1.75}
+.card.wide .trk{height:20px}.card.wide .pair .trk{height:12px}.card.wide .pair{gap:4px}
 /* pills */
 .pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px}
@@ -381,23 +388,25 @@ function renderStandings(){
 
 /* ---------- division charts ---------- */
 const W_ = 'var(--good)', O_ = 'var(--muted)', L_ = 'var(--bad)';
-function cCard(title, note, body, extra){
-  return '<div class="panel card'+(extra||'')+'"'+(extra?' style="--c:'+DIVCOL[title]+'"':'')+'><h3>'+title+'</h3>'+(note?'<div class="note" style="margin:-4px 0 6px">'+note+'</div>':'')+body+'</div>';
+function cCard(title, note, body, extra, wide){
+  const st = (extra?'--c:'+DIVCOL[title]+';':'')+(wide?'grid-column:1/-1;':'');
+  return '<div class="panel card'+(extra||'')+(wide?' wide':'')+'"'+(st?' style="'+st+'"':'')+'><h3>'+title+'</h3>'+(note?'<div class="note" style="margin:-4px 0 6px">'+note+'</div>':'')+body+'</div>';
 }
+const PTS_HEAD = '<div class="cr chd"><span></span><span>Total points</span></div>';
 function rowOf(a, mid, val){ return '<div class="cr"><span class="tm">'+dot(a)+esc(a)+'</span>'+mid+'<span class="v num">'+val+'</span></div>'; }
 function renderDivCharts(){
   const all = state.div==='All';
   let h = '<div class="sh"><h2>'+(all?'Division snapshot':esc(state.div)+' snapshot')+'</h2><span class="note">'
-    + (all ? 'Points for every team, grouped by division, on one shared scale. Pick a division for the full set of charts.' : 'How each team is doing, listed in standings order.') + '</span></div>';
+    + '</span></div>';
   if(!AB.some(a=>T[a].gp>0)){ $('#divCharts').innerHTML = h+'<div class="panel empty">Charts fill in once games have been played.</div>'; return; }
   if(all){
     const maxP = Math.max(2, Math.max.apply(null, AB.map(a=>T[a].pts)));
     h += '<div class="grid g2">';
     DIVS.forEach(d => {
       const ts = AB.filter(a=>T[a].division===d).sort(cmpStand);
-      h += cCard(d, '', ts.map(a => rowOf(a, '<span class="trk"><i style="width:'+(T[a].pts/maxP*100).toFixed(1)+'%;background:'+esc(T[a].color)+'"></i></span>', T[a].pts+' <span class="note">'+sgn(T[a].diff)+'</span>')).join(''), ' div');
+      h += cCard(d, '', PTS_HEAD + ts.map(a => rowOf(a, '<span class="trk"><i style="width:'+(T[a].pts/maxP*100).toFixed(1)+'%;background:'+esc(T[a].color)+'"></i></span>', T[a].pts)).join(''), ' div');
     });
-    h += '</div><div class="note" style="margin-top:6px">Number on the right: points, then goal differential.</div>';
+    h += '</div>';
     $('#divCharts').innerHTML = h; return;
   }
   const ts = view().sort(cmpStand);
@@ -406,15 +415,15 @@ function renderDivCharts(){
   const maxG = Math.max(1, Math.max.apply(null, ts.map(a=>Math.max(T[a].gf,T[a].ga))));
   const maxD = Math.max(1, Math.max.apply(null, ts.map(a=>Math.abs(T[a].diff))));
   h += '<div class="grid g2">';
-  h += cCard('Points', '', ts.map(a => rowOf(a, '<span class="trk"><i style="width:'+(T[a].pts/maxP*100).toFixed(1)+'%;background:'+esc(T[a].color)+'"></i></span>', T[a].pts)).join(''));
+  h += cCard('Points', '', PTS_HEAD + ts.map(a => rowOf(a, '<span class="trk"><i style="width:'+(T[a].pts/maxP*100).toFixed(1)+'%;background:'+esc(T[a].color)+'"></i></span>', T[a].pts)).join(''));
   h += cCard('Record', '', '<div class="lgd"><span><b style="background:'+W_+'"></b>Wins</span><span><b style="background:'+O_+'"></b>OT losses</span><span><b style="background:'+L_+'"></b>Losses</span></div>'
     + ts.map(a => { const t=T[a], seg=(n,c)=> n ? '<span class="seg" style="width:'+(n/maxGP*100).toFixed(1)+'%;background:'+c+'">'+n+'</span>' : '';
       return rowOf(a, '<span class="trk">'+seg(t.w,W_)+seg(t.otl,O_)+seg(t.l,L_)+'</span>', t.w+'-'+t.l+'-'+t.otl); }).join(''));
   h += cCard('Goals for and against', '', '<div class="lgd"><span><b style="background:var(--a)"></b>Goals for</span><span><b style="background:var(--red)"></b>Goals against</span></div>'
     + ts.map(a => { const t=T[a];
-      return rowOf(a, '<span class="pair"><span class="trk"><i style="width:'+(t.gf/maxG*100).toFixed(1)+'%;background:var(--a)"></i></span><span class="trk"><i style="width:'+(t.ga/maxG*100).toFixed(1)+'%;background:var(--red)"></i></span></span>', t.gf+' / '+t.ga); }).join(''));
+      return rowOf(a, '<span class="pair"><span class="trk"><i style="width:'+(t.gf/maxG*100).toFixed(1)+'%;background:var(--a)"></i></span><span class="trk"><i style="width:'+(t.ga/maxG*100).toFixed(1)+'%;background:var(--red)"></i></span></span>', t.gf+' / '+t.ga); }).join(''), '', 1);
   h += cCard('Goal differential', '', ts.slice().sort((x,y)=>T[y].diff-T[x].diff).map(a => { const d=T[a].diff, w=(Math.abs(d)/maxD*100).toFixed(1);
-      return rowOf(a, '<span class="dv"><span class="l">'+(d<0?'<i style="width:'+w+'%;background:var(--bad)"></i>':'')+'</span><span class="r">'+(d>0?'<i style="width:'+w+'%;background:var(--good)"></i>':'')+'</span></span>', sgn(d)); }).join(''));
+      return rowOf(a, '<span class="dv"><span class="l">'+(d<0?'<i style="width:'+w+'%;background:var(--bad)"></i>':'')+'</span><span class="r">'+(d>0?'<i style="width:'+w+'%;background:var(--good)"></i>':'')+'</span></span>', sgn(d)); }).join(''), '', 1);
   h += '</div>';
   $('#divCharts').innerHTML = h;
 }
@@ -442,11 +451,13 @@ function scatter(P, o){
   const px=(x1-x0)*0.14||1, py=(y1-y0)*0.14||1; x0-=px; x1+=px; y0-=py; y1+=py;
   const X=v=>ml+(v-x0)/(x1-x0)*(W-ml-mr), Y=v=>mt+(y1-v)/(y1-y0)*(H-mt-mb);
   let s = '<svg class="sc" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(o.title)+'">';
-  niceTicks(y0,y1,5).forEach(v => { s += '<line class="gl" x1="'+ml+'" x2="'+(W-mr)+'" y1="'+Y(v).toFixed(1)+'" y2="'+Y(v).toFixed(1)+'"/><text x="'+(ml-8)+'" y="'+(Y(v)+4).toFixed(1)+'" text-anchor="end">'+o.yf(v)+'</text>'; });
-  niceTicks(x0,x1,6).forEach(v => { s += '<line class="gl" x1="'+X(v).toFixed(1)+'" x2="'+X(v).toFixed(1)+'" y1="'+mt+'" y2="'+(H-mb)+'"/><text x="'+X(v).toFixed(1)+'" y="'+(H-mb+18)+'" text-anchor="middle">'+o.xf(v)+'</text>'; });
+  niceTicks(y0,y1,5).forEach(v => { s += '<text x="'+(ml-8)+'" y="'+(Y(v)+4).toFixed(1)+'" text-anchor="end">'+o.yf(v)+'</text>'; });
+  niceTicks(x0,x1,6).forEach(v => { s += '<text x="'+X(v).toFixed(1)+'" y="'+(H-mb+18)+'" text-anchor="middle">'+o.xf(v)+'</text>'; });
+  s += '<line class="ax" x1="'+ml+'" x2="'+ml+'" y1="'+mt+'" y2="'+(H-mb)+'"/><line class="ax" x1="'+ml+'" x2="'+(W-mr)+'" y1="'+(H-mb)+'" y2="'+(H-mb)+'"/>';
   if(o.avg) s += '<line class="avg" x1="'+X(o.avg.x).toFixed(1)+'" x2="'+X(o.avg.x).toFixed(1)+'" y1="'+mt+'" y2="'+(H-mb)+'"/><line class="avg" x1="'+ml+'" x2="'+(W-mr)+'" y1="'+Y(o.avg.y).toFixed(1)+'" y2="'+Y(o.avg.y).toFixed(1)+'"/>';
   s += '<text x="'+((ml+W-mr)/2)+'" y="'+(H-8)+'" text-anchor="middle">'+esc(o.xl)+'</text><text transform="translate(14 '+((mt+H-mb)/2)+') rotate(-90)" text-anchor="middle">'+esc(o.yl)+'</text>';
-  s += '<text class="best" x="'+(o.best==='tr'?W-mr-6:ml+8)+'" y="'+(mt+14)+'" text-anchor="'+(o.best==='tr'?'end':'start')+'">Strongest here</text>';
+  { const bw = 112, bx = o.best==='tr' ? W-mr-8-bw : ml+10;
+    s += '<rect class="bestc" x="'+bx+'" y="'+(mt+2)+'" width="'+bw+'" height="26" rx="13"/><text class="best" x="'+(bx+bw/2)+'" y="'+(mt+19)+'" text-anchor="middle">Strongest here</text>'; }
   P.forEach(p => { s += '<g data-a="'+p.a+'" data-x="'+p.x+'" data-y="'+p.y+'"><circle cx="'+X(p.x).toFixed(1)+'" cy="'+Y(p.y).toFixed(1)+'" r="7.5" style="fill:'+esc(T[p.a].color)+';stroke:var(--panel);stroke-width:2"><title>'+esc(T[p.a].name)+'</title></circle><text class="lab" x="'+(X(p.x)+11).toFixed(1)+'" y="'+(Y(p.y)+4).toFixed(1)+'">'+p.a+'</text></g>'; });
   return s+'</svg>';
 }
@@ -471,7 +482,7 @@ function playoffPicture(){
 }
 
 function tabForm(ts){
-  let h = '<div class="panel scroll"><table class="ins"><thead><tr><th class="l">Team</th><th class="l">Last 5</th><th>Home</th><th>Road</th><th>One-goal games</th><th>Overtime games</th><th>Division games</th></tr></thead><tbody>';
+  let h = '<div class="panel scroll"><table class="ins"><thead><tr><th class="l">Team</th><th class="l">Last 5<span class="fdl"><span>Oldest</span><span>Most recent</span></span></th><th>Home</th><th>Road</th><th>One-goal games</th><th>Overtime games</th><th>Division games</th></tr></thead><tbody>';
   ts.forEach(a => {
     const L = tg[a], last = L.slice(-5);
     let dots = '';
@@ -487,7 +498,7 @@ function tabGfga(ts){
   const P = ts.filter(a=>T[a].gp>0).map(a => ({a:a, x:T[a].gapg, y:T[a].gfpg}));
   if(!P.length) return emptyBox('This chart fills in once games have been played.');
   const pl = AB.filter(a=>T[a].gp>0), gpT = pl.reduce((s,a)=>s+T[a].gp,0), gx = pl.reduce((s,a)=>s+T[a].ga,0)/gpT, gy = pl.reduce((s,a)=>s+T[a].gf,0)/gpT;
-  return '<div class="panel" style="padding:10px 12px">'+scatter(P,{title:'Goals for versus goals against per game',xl:'Goals against per game (lower is better)',yl:'Goals for per game',xf:v=>v.toFixed(1),yf:v=>v.toFixed(1),avg:{x:gx,y:gy},best:'tl'})+'</div>'
+  return '<div class="panel" style="padding:10px 12px">'+scatter(P,{title:'Goals for versus goals against per game',xl:'Goals against per game',yl:'Goals for per game',xf:v=>v.toFixed(1),yf:v=>v.toFixed(1),avg:{x:gx,y:gy},best:'tl'})+'</div>'
     +'<div class="note" style="margin-top:6px">Dashed lines mark the league average per game. Top left means scoring a lot and allowing little.</div>';
 }
 function tabRace(ts){
@@ -638,7 +649,7 @@ const TM = [
   {k:'diff', l:'Goal differential', hi:1, d:0, sg:1}
 ];
 function renderTeamLeaders(){
-  let h = '<div class="sh"><h2>Team leaders</h2><span class="note">'+(state.div==='All'?'Top 8 of 32 teams. Lower is better for goals and shots against.':'Ranked within the division. Lower is better for goals and shots against.')+'</span></div><div class="grid">';
+  let h = '<div class="sh"><h2>Team leaders</h2><span class="note">'+(state.div==='All'?'Top 8 of 32 teams. Lower is better for goals and shots against.':'')+'</span></div><div class="grid">';
   TM.filter(m => AB.some(a => T[a][m.k]!=null && isFinite(T[a][m.k]))).forEach(m => {
     const v = view().filter(a=>T[a].gp>0 && T[a][m.k]!=null).sort((x,y) => (m.hi ? T[y][m.k]-T[x][m.k] : T[x][m.k]-T[y][m.k]) || cmpStand(x,y)).slice(0,8);
     h += '<div class="panel card"><h3>'+m.l+'</h3>'+(m.note?'<div class="note" style="margin:-4px 0 6px">'+m.note+'</div>':'');
@@ -683,7 +694,7 @@ function renderPlayerLeaders(){
   if(m.minShots) list = list.filter(p => p.sog>=Math.max(5,MIN_SK*2));
   if(m.minDraws) list = list.filter(p => p.fop!=null && p.draws>=10);
   list = list.sort((a,b) => (b[m.k]||0)-(a[m.k]||0) || b.p-a.p || b.g-a.g || a.gp-b.gp || a.name.localeCompare(b.name)).slice(0,10);
-  const rule = (m.rate ? 'Minimum '+MIN_SK+(MIN_SK===1?' game':' games')+' played'+(m.minDraws?' and 10 faceoffs':'')+'. ' : 'Top 10 in view. ');
+  const rule = '';
   let h = '<div class="sh"><h2>Point leaders</h2><span class="note">'+rule+esc(D.playerNote||'')+'</span></div>'
     + pillRow(SKM.map(x=>[x.k,x.l]), state.skm, 'data-skm')
     + pillRow([['ALL','All skaters'],['F','Forwards'],['D','Defensemen']], state.skp, 'data-skp');
@@ -778,7 +789,7 @@ function renderH2HTeams(){
   const AX = RM.filter(m => played.some(a => ok(T[a][m.k])));
   const rng = {}; AX.forEach(m => { const xs = played.map(a=>T[a][m.k]).filter(ok); rng[m.k] = [Math.min.apply(null,xs), Math.max.apply(null,xs)]; });
   const nrm = (m,val) => { if(!ok(val)) return 0.06; const r=rng[m.k]; if(r[1]===r[0]) return 0.5; const f=(val-r[0])/(r[1]-r[0]); return 0.06+0.94*(m.hi?f:1-f); };
-  let h = '<div class="sh"><h2>Head-to-head: teams</h2><span class="note">Each axis is scaled against all 32 teams. Farther out is better.</span></div>'
+  let h = '<div class="sh"><h2>Head-to-head: teams</h2></div>'
     + '<div class="h2h"><div class="panel"><div class="sel"><select class="ca" data-sel="tA" aria-label="Team A">'+teamOpts(state.tA)+'</select><select class="cb" data-sel="tB" aria-label="Team B">'+teamOpts(state.tB)+'</select></div>';
   h += (played.length && AX.length>=3) ? radar(AX.map(m=>m.l), AX.map(m=>nrm(m,A[m.k])), AX.map(m=>nrm(m,B[m.k]))) : '<div class="empty">The radar appears once games have been played.</div>';
   h += '</div><div class="panel"><h3><span style="color:var(--a)">'+esc(A.name)+'</span> vs <span style="color:var(--b)">'+esc(B.name)+'</span></h3>';
@@ -815,7 +826,7 @@ function renderH2HPlayers(){
     const ps = pool.filter(p=>T[p.team].division===d).sort((x,y)=> g==='G' ? y.gp-x.gp : y.p-x.p).slice(0,g==='G'?16:40);
     return '<optgroup label="'+d+'">'+ps.map(p=>'<option value="'+p.id+'"'+(String(p.id)===String(sel)?' selected':'')+'>'+esc(p.name)+' ('+p.team+', '+(p.pos?esc(p.pos):'G')+')</option>').join('')+'</optgroup>';
   }).join('');
-  let h = '<div class="sh"><h2>Head-to-head: players</h2><span class="note">Axes are scaled against every '+({F:'forward',D:'defenseman',G:'goalie'})[g]+' in the league. Farther out is better.</span></div>'
+  let h = '<div class="sh"><h2>Head-to-head: players</h2></div>'
     + pillRow([['F','Forwards'],['D','Defensemen'],['G','Goalies']], g, 'data-pg') + '<div class="h2h">';
   if(!A || !B){ $('#h2hPlayers').innerHTML = h+'<div class="panel empty">'+(pool.length?'Not enough players to compare yet.':'Player stats are not loaded yet. Run <code>python fetch_nhl.py</code> to add them.')+'</div></div>'; return; }
   const q = pool.filter(p => g==='G' ? p.gp>=Math.min(MIN_GL,3) : p.gp>=MIN_SK);
