@@ -442,7 +442,7 @@ function renderDivCharts(){
 
 /* ---------- division insights ---------- */
 const SEASON_GAMES = D.seasonGames || 84;
-const INS = [['form','Form and splits'],['gfga','Goals for vs against'],['race','Playoff race'],['pts','Points race'],['scorers','Scoring leaders'],
+const INS = [['form','Form and splits'],['gfga','Goals for vs against'],['race','Playoff race'],['scorers','Scoring leaders'],
   ['dvd','Division vs division'],['st','Special teams'],['shots','Shot share and PDO'],['sched','Schedule ahead'],['xg','Expected goals']];
 function niceTicks(min,max,n){
   const span = (max-min) || 1, raw = span/n, mag = Math.pow(10,Math.floor(Math.log10(raw))), f = raw/mag;
@@ -513,22 +513,22 @@ function tabGfga(ts){
   return '<div class="panel" style="padding:10px 12px">'+scatter(P,{title:'Goals for versus goals against per game',xl:'Goals against per game',yl:'Goals for per game',xf:v=>v.toFixed(1),yf:v=>v.toFixed(1),avg:{x:gx,y:gy},best:'tl'})+'</div>'
     +'<div class="note" style="margin-top:6px">Dashed lines mark the league average per game. Top left means scoring a lot and allowing little.</div>';
 }
+const paceOf = a => T[a].gp ? T[a].pts/T[a].gp*SEASON_GAMES : -1;
 function tabRace(ts){
   const PP = playoffPicture(), pic = PP.pic;
   const bad = c => '<span class="bd '+(c.isIn?(c.wc?'wc':'in'):'out')+'">'+esc(c.label)+'</span>';
   const body = a => { const c=pic[a], t=T[a], pace = t.gp ? t.pts/t.gp*SEASON_GAMES : null;
     return '<tr data-a="'+a+'"><td class="l">'+tm(a)+'</td><td class="l" data-k="status">'+bad(c)+'</td><td class="num" data-k="pts">'+t.pts+'</td><td class="num" data-k="ppr">'+t.ppr+'</td><td class="num" data-k="gp">'+t.gp+'</td>'
-      + '<td class="l" data-k="pace" data-v="'+(pace==null?'':pace.toFixed(1))+'"><span style="display:inline-flex;align-items:center;gap:8px;min-width:190px"><span class="trk" style="width:120px"><i style="width:'+(pace==null?0:Math.min(100,pace/(2*SEASON_GAMES)*100)).toFixed(1)+'%;background:'+esc(t.color)+'"></i></span><b class="num">'+(pace==null?'–':pace.toFixed(1))+'</b></span></td>'
-      + '<td class="num" data-k="gap">'+(c.gap>0?'+':'')+c.gap+'</td></tr>'; };
-  const head = '<thead><tr><th class="l">Team</th><th class="l">Playoff spot</th><th>PTS</th><th>PPR</th><th>GP</th><th class="l">Points pace over '+SEASON_GAMES+' games</th><th>Points vs. the line</th></tr></thead>';
-  let h = '<div class="panel scroll"><table class="ins">'+head+'<tbody>'+ts.map(body).join('')+'</tbody></table></div>';
+      + '<td class="l" data-k="pace" data-v="'+(pace==null?'':pace.toFixed(1))+'"><span style="display:inline-flex;align-items:center;gap:8px;min-width:340px"><span class="trk" style="width:280px"><i style="width:'+(pace==null?0:Math.min(100,pace/(2*SEASON_GAMES)*100)).toFixed(1)+'%;background:'+esc(t.color)+'"></i></span><b class="num">'+(pace==null?'–':pace.toFixed(1))+'</b></span></td></tr>'; };
+  const head = '<thead><tr><th class="l">Team</th><th class="l">Playoff spot</th><th>PTS</th><th>PPR</th><th>GP</th><th class="l">Points pace over '+SEASON_GAMES+' games</th></tr></thead>';
+  let h = '<div class="panel scroll"><table class="ins">'+head+'<tbody>'+ts.slice().sort((a,b) => paceOf(b) - paceOf(a) || cmpStand(a,b)).map(body).join('')+'</tbody></table></div>';
   const confs = state.div==='All' ? ['Eastern','Western'] : [T[ts[0]].conference];
   h += '<div class="grid g2" style="margin-top:14px">'+confs.map(cn => {
     const c = PP.conf[cn], rows = c.wc.concat(c.out.slice(0,2));
     return '<div class="panel card"><h3>'+cn+' wild card race</h3><div class="note" style="margin:-4px 0 6px">Top three in each division make it, then the next two teams in the conference.</div>'
       + rows.map((a,i) => '<div class="cr" style="grid-template-columns:62px minmax(0,1fr) auto" data-wc="'+a+'"><span class="tm">'+dot(a)+esc(a)+'</span><span class="note">'+(i<2?'Wild card '+(i+1):(i===2?'First out':'Next out'))+'</span><span class="v num">'+T[a].pts+' pts, '+T[a].gp+' GP</span></div>').join('')+'</div>';
   }).join('')+'</div>';
-  return h+'<div class="note" style="margin-top:6px">Points vs. the line: for teams in, the cushion over the first team out; for teams out, the gap to the last team in. Pace is points per game times '+SEASON_GAMES+', so it swings a lot early in the season. Teams have played different numbers of games, so early gaps are not meaningful yet.</div>';
+  return h+'<div class="note" style="margin-top:6px">Sorted by points pace: points per game times '+SEASON_GAMES+'. It swings a lot early in the season. PPR is possible points remaining: 2 for every game left.</div>';
 }
 function tabPts(ts){
   if(state.div==='All') return emptyBox('Pick a division to see its points race.');
@@ -606,14 +606,14 @@ function shotStats(a){
   return {sf:sf, sa:sa, share:share, shp:shp, svp:svp, pdo:(shp+svp)*1000};
 }
 function tabShots(ts){
-  const rows = ts.map(a=>({a:a,s:shotStats(a)})).filter(r=>r.s);
+  const rows = ts.map(a=>({a:a,s:shotStats(a)})).filter(r=>r.s).sort((x,y) => y.s.share - x.s.share || cmpStand(x.a,y.a));
   if(!rows.length) return needFeed('Shot data');
   let h = '<div class="panel scroll"><table class="ins"><thead><tr><th class="l">Team</th><th>Shots for / GP</th><th>Shots against / GP</th><th class="l">Shot share</th><th>Shooting %</th><th>Save %</th><th>PDO</th></tr></thead><tbody>';
   rows.forEach(r => { const t=T[r.a], s=r.s;
     h += '<tr data-a="'+r.a+'"><td class="l">'+tm(r.a)+'</td><td class="num" data-k="sfpg">'+num(t.sfpg,1)+'</td><td class="num" data-k="sapg">'+num(t.sapg,1)+'</td>'
       + '<td class="l" data-k="share" data-v="'+(s.share*100).toFixed(1)+'"><span style="display:inline-flex;align-items:center;gap:8px"><span class="trk" style="width:110px"><i style="width:'+(s.share*100).toFixed(1)+'%;background:'+esc(t.color)+'"></i></span><b class="num">'+(s.share*100).toFixed(1)+'%</b></span></td>'
       + '<td class="num" data-k="shp">'+(s.shp*100).toFixed(1)+'%</td><td class="num" data-k="svp">'+sv3(s.svp)+'</td><td class="num" data-k="pdo">'+s.pdo.toFixed(0)+'</td></tr>'; });
-  return h+'</tbody></table></div><div class="note" style="margin-top:6px">Shot share is shots for divided by all shots in the team\'s games. PDO is shooting % plus save %, times 1000, over all situations. A PDO far above or below 1000 usually settles back toward it.</div>';
+  return h+'</tbody></table></div><div class="note" style="margin-top:6px">Sorted by shot share: shots for divided by all shots in the team\'s games. PDO is shooting % plus save %, times 1000, over all situations. A PDO far above or below 1000 usually settles back toward it.</div>';
 }
 function tabSched(ts){
   const up = games.filter(g=>g.st!=='F');
@@ -644,7 +644,7 @@ function tabXg(ts){
 function renderInsights(){
   const ts = view().sort(cmpStand);
   const fn = {form:tabForm, gfga:tabGfga, race:tabRace, pts:tabPts, scorers:tabScorers, dvd:tabDvd, st:tabSt, shots:tabShots, sched:tabSched, xg:tabXg}[state.ins];
-  $('#insights').innerHTML = '<div class="sh"><h2>'+(state.div==='All'?'League insights':esc(state.div)+' insights')+'</h2><span class="note">Pick a view.</span></div>'
+  $('#insights').innerHTML = '<div class="sh"><h2>'+(state.div==='All'?'League insights':esc(state.div)+' insights')+'</h2></div>'
     + pillRow(INS, state.ins, 'data-ins') + fn(ts);
 }
 
@@ -661,7 +661,7 @@ const TM = [
   {k:'diff', l:'Goal differential', hi:1, d:0, sg:1}
 ];
 function renderTeamLeaders(){
-  let h = '<div class="sh"><h2>Team leaders</h2><span class="note">'+(state.div==='All'?'Top 8 of 32 teams. Lower is better for goals and shots against.':'')+'</span></div><div class="grid">';
+  let h = '<div class="sh"><h2>Team leaders</h2><span class="note">'+''+'</span></div><div class="grid">';
   TM.filter(m => AB.some(a => T[a][m.k]!=null && isFinite(T[a][m.k]))).forEach(m => {
     const v = view().filter(a=>T[a].gp>0 && T[a][m.k]!=null).sort((x,y) => (m.hi ? T[y][m.k]-T[x][m.k] : T[x][m.k]-T[y][m.k]) || cmpStand(x,y)).slice(0,8);
     h += '<div class="panel card"><h3>'+m.l+'</h3>'+(m.note?'<div class="note" style="margin:-4px 0 6px">'+m.note+'</div>':'');
