@@ -301,10 +301,10 @@ const state = {
 };
 const inV = a => state.div === 'All' || T[a].division === state.div;
 const view = () => AB.filter(inV);
-// Default order: points %, then points, fewer games played, regulation wins, regulation+OT wins, goal differential, goals for, then name.
+// Default order everywhere: points %, then points, then goal differential; then fewer games played, regulation wins, regulation+OT wins, goals for, name.
 const rowOf_ = x => (x.row!=null ? x.row : x.w);
-const cmpStand = (a,b) => T[b].ptsPct - T[a].ptsPct || T[b].pts - T[a].pts || T[a].gp - T[b].gp || T[b].rw - T[a].rw || rowOf_(T[b]) - rowOf_(T[a])
-  || T[b].diff - T[a].diff || T[b].gf - T[a].gf || T[a].name.localeCompare(T[b].name);
+const cmpStand = (a,b) => T[b].ptsPct - T[a].ptsPct || T[b].pts - T[a].pts || T[b].diff - T[a].diff
+  || T[a].gp - T[b].gp || T[b].rw - T[a].rw || rowOf_(T[b]) - rowOf_(T[a]) || T[b].gf - T[a].gf || T[a].name.localeCompare(T[b].name);
 const dot = a => '<span class="dot" style="background:'+esc(T[a].color)+'"></span>';
 const tm = a => '<span class="team">'+dot(a)+esc(a)+'</span>';
 
