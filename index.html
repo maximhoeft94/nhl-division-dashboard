@@ -294,15 +294,15 @@ games.forEach(g => {
 
 /* ---------- state ---------- */
 const state = {
-  div:'All', sortKey:'pts', sortDir:-1,
+  div:'All', sortKey:'ptsPct', sortDir:-1,
   skm:'p', skp:'ALL', glm:'svPct', ins:'form',
   tA:null, tB:null, pg:'F', pA:null, pB:null
 };
 const inV = a => state.div === 'All' || T[a].division === state.div;
 const view = () => AB.filter(inV);
-// League tiebreak order: points, fewer games played, regulation wins, regulation+OT wins, goal differential, goals for, then name.
+// Default order: points %, then points, fewer games played, regulation wins, regulation+OT wins, goal differential, goals for, then name.
 const rowOf_ = x => (x.row!=null ? x.row : x.w);
-const cmpStand = (a,b) => T[b].pts - T[a].pts || T[a].gp - T[b].gp || T[b].rw - T[a].rw || rowOf_(T[b]) - rowOf_(T[a])
+const cmpStand = (a,b) => T[b].ptsPct - T[a].ptsPct || T[b].pts - T[a].pts || T[a].gp - T[b].gp || T[b].rw - T[a].rw || rowOf_(T[b]) - rowOf_(T[a])
   || T[b].diff - T[a].diff || T[b].gf - T[a].gf || T[a].name.localeCompare(T[b].name);
 const dot = a => '<span class="dot" style="background:'+esc(T[a].color)+'"></span>';
 const tm = a => '<span class="team">'+dot(a)+esc(a)+'</span>';
@@ -324,7 +324,7 @@ function renderHero(){
   const has = lead && lead.gp>0;
   const mark = '<svg class="mark" viewBox="0 0 132 132" aria-hidden="true"><path class="m" d="M49 26V96M66 26V96M83 26V96M32 44H100M32 62H100M32 80H100"/><path class="b" d="M20 40L32 26H100L112 40M32 26V96H100V26M20 108L32 96M112 108L100 96"/><path class="f" d="M20 108V40H112V108M8 108H124"/></svg>';
   $('#hero').innerHTML = '<div class="hero"><div class="circle"><h1><span>'+(state.div==='All'?'League':'Division')+'</span>'+(state.div==='All'?'All 32 teams':esc(state.div))+'</h1></div>'+mark+'</div><div class="kpis">'
-    + k(state.div==='All'?'League leader':'Division leader', has?esc(lead.ab):'–', has?lead.pts+' pts in '+lead.gp+' GP':'No games played yet')
+    + k(state.div==='All'?'League leader':'Division leader', has?esc(lead.ab):'–', has?sv3(lead.ptsPct)+' P%, '+lead.pts+' pts in '+lead.gp+' GP':'No games played yet')
     + k('Best offense', has?num(off.gfpg,2):'–', has?esc(off.ab)+' goals per game':'')
     + k('Best defense', has?num(def.gapg,2):'–', has?esc(def.ab)+' allowed per game':'')
     + k('Points leader', sk&&sk.p>0?sk.p:'–', sk&&sk.p>0?esc(sk.name)+' ('+esc(sk.team)+')'+(D.playerShort?'<br>'+esc(D.playerShort):''):(D.playerShort?'No points yet in<br>'+esc(D.playerShort).toLowerCase():''))
@@ -361,7 +361,7 @@ function renderStandings(){
     const c = (typeof a==='string') ? a.localeCompare(b)*state.sortDir : (b-a)*(-state.sortDir);
     return c || cmpStand(x,y);
   });
-  const cut = !all && state.sortKey==='pts' && state.sortDir===-1;
+  const cut = !all && state.sortKey==='ptsPct' && state.sortDir===-1;
   let h = '<div class="sh"><h2>Standings</h2><span class="note">'+(cut?'Dashed line marks the top 3 automatic playoff spots. ':'')+'Click a column to sort.</span></div>';
   h += '<div class="panel scroll"><table><thead><tr>';
   if(all) h += '<th class="l">Div</th>';
